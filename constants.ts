@@ -75,3 +75,21 @@ export const ACHIEVEMENTS: Achievement[] = [
     locked: true,
   },
 ];
+
+export const LANG_CONFIG: Record<string, { flag: string; locale: string; name: string }> = {
+  DE: { flag: '🇩🇪', locale: 'de-DE', name: 'German' },
+  EN: { flag: '🇬🇧', locale: 'en-US', name: 'English' },
+  CN: { flag: '🇨🇳', locale: 'zh-CN', name: 'Chinese' },
+  FR: { flag: '🇫🇷', locale: 'fr-FR', name: 'French' },
+  ES: { flag: '🇪🇸', locale: 'es-ES', name: 'Spanish' },
+  JP: { flag: '🇯🇵', locale: 'ja-JP', name: 'Japanese' },
+  KR: { flag: '🇰🇷', locale: 'ko-KR', name: 'Korean' },
+  IT: { flag: '🇮🇹', locale: 'it-IT', name: 'Italian' },
+  PT: { flag: '🇵🇹', locale: 'pt-PT', name: 'Portuguese' },
+  RU: { flag: '🇷🇺', locale: 'ru-RU', name: 'Russian' },
+  AR: { flag: '🇸🇦', locale: 'ar-SA', name: 'Arabic' },
+};
+
+export const getLangDetails = (code: string) => {
+  return LANG_CONFIG[code] || LANG_CONFIG['EN'];
+};

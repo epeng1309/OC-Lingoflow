@@ -4,6 +4,8 @@ import { Word } from '../types';
 import { useStore } from '../store/useStore';
 import { Icon } from '../components/Icon';
 import { speak } from '../utils/speech';
+import { normalizeLanguageCode } from '../utils/gemini';
+import { getLangDetails } from '../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -77,7 +79,9 @@ export const DeckView: React.FC = () => {
 
   const handleSpeak = (e: React.MouseEvent, text: string) => {
     e.stopPropagation();
-    speak(text, currentDeck?.fromLang === 'German' ? 'de-DE' : 'en-US');
+    const fromCode = normalizeLanguageCode(currentDeck?.fromLang || 'German');
+    const langDetails = getLangDetails(fromCode);
+    speak(text, langDetails.locale);
   };
 
   const openWordModal = (word: Word | null = null) => {
