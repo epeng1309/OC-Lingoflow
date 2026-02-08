@@ -77,11 +77,11 @@ export const DeckView: React.FC = () => {
     }
   };
 
-  const handleSpeak = (e: React.MouseEvent, text: string) => {
+  const handleSpeak = (e: React.MouseEvent, word: Word) => {
     e.stopPropagation();
-    const fromCode = normalizeLanguageCode(currentDeck?.fromLang || 'German');
+    const fromCode = word.fromLang || normalizeLanguageCode(currentDeck?.fromLang || 'German');
     const langDetails = getLangDetails(fromCode);
-    speak(text, langDetails.locale);
+    speak(word.original, langDetails.locale);
   };
 
   const openWordModal = (word: Word | null = null) => {
@@ -380,7 +380,7 @@ export const DeckView: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={(e) => handleSpeak(e, word.original)}
+                        onClick={(e) => handleSpeak(e, word)}
                         className="size-10 rounded-full flex items-center justify-center text-primary bg-primary/5 hover:bg-primary/20 hover:scale-105 active:scale-90 transition-all"
                       >
                         <Icon name="volume_up" size={20} />
