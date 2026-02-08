@@ -259,7 +259,9 @@ export const DeckView: React.FC = () => {
     }
   };
 
-  const handleStartSession = () => {
+  const saveScrollPosition = () => {
+    if (!id) return;
+    
     const scrollTop = parentRef.current?.scrollTop || 0;
     const virtualItems = rowVirtualizer.getVirtualItems();
 
@@ -267,7 +269,6 @@ export const DeckView: React.FC = () => {
     let firstIndex = 0;
 
     // Find the item that starts visible in the viewport
-    // The item whose 'end' (start + size) is greater than scrollTop
     const visibleItem = virtualItems.find((item) => {
       // Logic: A word is "visible" if its center point is within the viewport
       // OR if a significant portion (e.g., > 50%) is visible.
@@ -289,12 +290,14 @@ export const DeckView: React.FC = () => {
     // Safety clamp
     firstIndex = Math.max(0, Math.min(firstIndex, filteredWords.length - 1));
 
-    // Save scroll position
-    if (id) {
-      sessionStorage.setItem(`lingoflow_deck_scroll_${id}`, firstIndex.toString());
-    }
+    sessionStorage.setItem(`lingoflow_deck_scroll_${id}`, firstIndex.toString());
+    return firstIndex;
+  };
 
-    const startWord = filteredWords[firstIndex];
+  const handleStartSession = () => {
+    const startWordIndex = saveScrollPosition();
+    const startWord = filteredWords[startWordIndex || 0]; // Fallback to 0 if undefined
+    
     // Use query parameter instead of state for robust URL-based navigation
     navigate(`/flashcards/${id}?startWordId=${startWord?.id || ''}`);
   };
@@ -304,7 +307,13 @@ export const DeckView: React.FC = () => {
       {/* App Bar */}
       <header className="sticky top-0 z-20 bg-surface-light dark:bg-surface-dark border-b border-slate-100 dark:border-slate-800 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 h-16">
-          <button onClick={() => navigate('/library')} className="p-2 -ml-2 text-primary">
+          <button
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/library');
+            }}
+            className="p-2 -ml-2 text-primary"
+          >
             <Icon name="arrow_back" size={24} />
           </button>
           <div className="flex-1 px-4 text-center">
