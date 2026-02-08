@@ -370,11 +370,22 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
                   </>
                 )}
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-4 w-full">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Translation</h2>
-                <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                  {currentWord.translated}
-                </h1>
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-4 w-full gap-4">
+                <div>
+                  <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Translation</h2>
+                  <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                    {currentWord.translated}
+                  </h1>
+                </div>
+                <button
+                  className="flex items-center justify-center size-14 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary active:scale-90 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(currentWord.translated, toLangDetails.locale);
+                  }}
+                >
+                  <Icon name="volume_up" size={28} />
+                </button>
               </div>
               <div className="w-full flex justify-center pb-2">
                 <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 opacity-60">

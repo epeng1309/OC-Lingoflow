@@ -5,7 +5,7 @@ import { useStore } from '../store/useStore';
 import { Icon } from '../components/Icon';
 import { speak } from '../utils/speech';
 import { normalizeLanguageCode } from '../utils/gemini';
-import { getLangDetails } from '../constants';
+import { getLangDetails, LANG_CONFIG } from '../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -22,6 +22,8 @@ export const DeckView: React.FC = () => {
   const [manualOriginal, setManualOriginal] = useState('');
   const [manualTranslated, setManualTranslated] = useState('');
   const [manualType, setManualType] = useState('Term');
+  const [manualFromLang, setManualFromLang] = useState('DE');
+  const [manualToLang, setManualToLang] = useState('EN');
 
   // Import states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -90,11 +92,15 @@ export const DeckView: React.FC = () => {
       setManualOriginal(word.original);
       setManualTranslated(word.translated);
       setManualType(word.type || 'Term');
+      setManualFromLang(word.fromLang || normalizeLanguageCode(currentDeck?.fromLang || 'German'));
+      setManualToLang(word.toLang || normalizeLanguageCode(currentDeck?.toLang || 'English'));
     } else {
       setEditingWord(null);
       setManualOriginal('');
       setManualTranslated('');
       setManualType('Term');
+      setManualFromLang(normalizeLanguageCode(currentDeck?.fromLang || 'German'));
+      setManualToLang(normalizeLanguageCode(currentDeck?.toLang || 'English'));
     }
     setShowWordModal(true);
   };
@@ -108,6 +114,8 @@ export const DeckView: React.FC = () => {
         original: manualOriginal.trim(),
         translated: manualTranslated.trim(),
         type: manualType,
+        fromLang: manualFromLang,
+        toLang: manualToLang,
       });
     } else {
       const newWord: Word = {
@@ -116,6 +124,8 @@ export const DeckView: React.FC = () => {
         original: manualOriginal.trim(),
         translated: manualTranslated.trim(),
         type: manualType,
+        fromLang: manualFromLang,
+        toLang: manualToLang,
         audio: true,
       };
       addWords([newWord]);
@@ -479,6 +489,59 @@ export const DeckView: React.FC = () => {
                     className="w-full bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl font-bold border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all dark:text-white"
                     placeholder="e.g. default"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                      From Language
+                    </label>
+                    <select
+                      value={manualFromLang}
+                      onChange={(e) => setManualFromLang(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl font-bold border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all dark:text-white cursor-pointer appearance-none"
+                    >
+                      {Object.entries(LANG_CONFIG).map(([code, config]) => (
+                        <option key={code} value={code}>
+                          {config.flag} {config.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                      To Language
+                    </label>
+                    <select
+                      value={manualToLang}
+                      onChange={(e) => setManualToLang(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl font-bold border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all dark:text-white cursor-pointer appearance-none"
+                    >
+                      {Object.entries(LANG_CONFIG).map(([code, config]) => (
+                        <option key={code} value={code}>
+                          {config.flag} {config.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                    Word Type
+                  </label>
+                  <select
+                    value={manualType}
+                    onChange={(e) => setManualType(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl font-bold border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all dark:text-white cursor-pointer appearance-none"
+                  >
+                    <option value="Term">Term (Generic)</option>
+                    <option value="Noun">Noun</option>
+                    <option value="Verb">Verb</option>
+                    <option value="Adjective">Adjective</option>
+                    <option value="Phrase">Phrase</option>
+                    <option value="Sentence">Sentence</option>
+                  </select>
                 </div>
 
                 <div className="flex gap-4 pt-6">
