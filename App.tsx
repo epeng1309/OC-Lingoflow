@@ -13,7 +13,7 @@ const DeckView = lazy(() => import('./screens/DeckView').then((m) => ({ default:
 const FlashcardSession = lazy(() =>
   import('./screens/FlashcardSession').then((m) => ({ default: m.FlashcardSession })),
 );
-const Stats = lazy(() => import('./screens/Stats').then((m) => ({ default: m.Stats })));
+const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })));
 const SpellingPractice = lazy(() =>
   import('./screens/SpellingPractice').then((m) => ({ default: m.SpellingPractice })),
 );
@@ -65,14 +65,14 @@ const AnimatedRoutes = () => {
           <Route path="/library" element={<Library />} />
           <Route path="/deck/:id" element={<DeckView />} />
           <Route path="/flashcards/:deckId" element={<FlashcardSession />} />
-          <Route path="/vocabulary" element={<VocabularyManager />} />
-          <Route path="/stats" element={<Stats />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/spelling/:deckId" element={<SpellingPractice />} />
           <Route path="/weak-words" element={<WeakWords />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/ai-quiz/:deckId" element={<AIQuiz />} />
           <Route path="/ai-tutor" element={<AITutor />} />
           <Route path="/help" element={<Help />} />
+          <Route path="/vocabulary" element={<VocabularyManager />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </motion.div>
@@ -111,9 +111,9 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="w-full h-full min-h-screen bg-neutral-100 dark:bg-neutral-900 flex justify-center">
+      <div className="w-full h-full bg-neutral-100 dark:bg-neutral-900 flex justify-center overflow-hidden">
         {/* Wrapper to simulate mobile view on desktop if opened there */}
-        <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen shadow-2xl relative overflow-hidden">
+        <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full shadow-2xl relative overflow-hidden flex flex-col">
           <Suspense fallback={<PageLoader />}>
             <AnimatedRoutes />
           </Suspense>

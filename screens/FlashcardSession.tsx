@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Icon } from '../components/Icon';
 import { speak } from '../utils/speech';
@@ -28,15 +28,9 @@ interface FlashcardSessionProps {}
 
 export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { deckId } = useParams<{ deckId: string }>();
-  const { words, decks, logStudy } = useStore();
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [aiExamples, setAiExamples] = useState<AIExample[]>([]);
-  const [loadingAI, setLoadingAI] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [sessionCount, setSessionCount] = useState(0);
+  const { words, decks, logStudy, updateWord, addXp } = useStore();
 
   const deck = decks.find((d) => d.id === deckId);
 
@@ -44,6 +38,34 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
   const sessionWords = useMemo(() => {
     return deckId ? words.filter((w) => w.deckId === deckId) : words;
   }, [words, deckId]);
+
+  // Extract startWordId from URL query parameters
+  const queryParams = new URLSearchParams(location.search);
+  const startWordId = queryParams.get('startWordId');
+
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (startWordId && sessionWords.length > 0) {
+      const idx = sessionWords.findIndex((w) => w.id === startWordId);
+      return idx !== -1 ? idx : 0;
+    }
+    return 0;
+  });
+
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [aiExamples, setAiExamples] = useState<AIExample[]>([]);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [sessionCount, setSessionCount] = useState(0);
+
+  // Ensure index is updated if words load late or URL ID is provided
+  React.useEffect(() => {
+    if (startWordId && sessionWords.length > 0) {
+      const idx = sessionWords.findIndex((w) => w.id === startWordId);
+      if (idx !== -1 && currentIndex === 0 && sessionCount === 0) {
+        setCurrentIndex(idx);
+      }
+    }
+  }, [sessionWords, startWordId, sessionCount]);
 
   const currentWord = sessionWords[currentIndex] || {
     original: '',
@@ -69,7 +91,8 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
         setCurrentIndex((prev) => prev + 1);
       }, 150);
     } else {
-      if (deckId) logStudy(sessionCount + 1, deckId);
+      // Note: XP and study logging now happens per-card in handleRating()
+      // No bulk award needed here anymore
       setIsFinished(true);
     }
   };
@@ -82,6 +105,33 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
         setCurrentIndex((prev) => prev - 1);
       }, 150);
     }
+  };
+
+  // Real spaced repetition: update proficiency based on user rating
+  // XP awarded per card: Hard=5, Good=10, Easy=15
+  const handleRating = (rating: 'hard' | 'good' | 'easy') => {
+    const currentWord = sessionWords[currentIndex];
+    if (!currentWord?.id) {
+      handleNext();
+      return;
+    }
+
+    // Update proficiency
+    const proficiencyDelta = { hard: -10, good: 5, easy: 15 };
+    const currentProficiency = currentWord.proficiency ?? 0;
+    const newProficiency = Math.max(0, Math.min(100, currentProficiency + proficiencyDelta[rating]));
+    updateWord(currentWord.id, { proficiency: newProficiency });
+
+    // Award XP per card rated (not just at session end)
+    const xpReward = { hard: 5, good: 10, easy: 15 };
+    addXp(xpReward[rating]);
+
+    // Log study activity per card (for streak tracking)
+    if (deckId) {
+      logStudy(1, deckId);
+    }
+
+    handleNext();
   };
 
   // Keyboard Shortcuts
@@ -287,13 +337,32 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
 
             {/* Back of Card */}
             <div className="absolute inset-0 w-full h-full bg-white dark:bg-slate-800 rounded-3xl p-8 flex flex-col items-center justify-between backface-hidden rotate-y-180 shadow-sm border border-slate-100 dark:border-slate-700">
-              <div className="w-full h-32 rounded-2xl bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden border border-slate-100 dark:border-slate-700">
+              <div
+                className={`w-full rounded-2xl bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden border border-slate-100 dark:border-slate-700 ${aiExamples.length > 0 ? 'h-48 min-h-48' : 'h-32'}`}
+              >
                 {aiExamples.length > 0 ? (
                   <div className="w-full h-full p-4 overflow-y-auto no-scrollbar space-y-3">
                     {aiExamples.map((ex, i) => (
                       <div key={i} className="text-left animate-in slide-in-from-bottom-2 duration-300">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{ex.sentence}</p>
-                        <p className="text-[11px] text-slate-500 italic mt-0.5">{ex.translation}</p>
+                        <p
+                          className="text-sm font-bold text-slate-900 dark:text-white leading-tight cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            speak(ex.sentence, fromLangDetails.locale);
+                          }}
+                        >
+                          <Icon name="volume_up" size={14} className="text-primary opacity-60 flex-shrink-0" />
+                          {ex.sentence}
+                        </p>
+                        <p
+                          className="text-[11px] text-slate-500 italic mt-0.5 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5 pl-5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            speak(ex.translation, toLangDetails.locale);
+                          }}
+                        >
+                          {ex.translation}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -339,7 +408,7 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
       <footer className="p-6 pb-10 bg-background-light dark:bg-background-dark w-full max-w-md mx-auto">
         <div className="grid grid-cols-3 gap-4">
           <button
-            onClick={handleNext}
+            onClick={() => handleRating('hard')}
             className="flex flex-col items-center justify-center gap-1 h-20 rounded-2xl bg-rose-50 dark:bg-rose-900/10 text-rose-500 dark:text-rose-400 font-black uppercase tracking-widest text-[10px] border-2 border-rose-100 dark:border-rose-900/30 hover:bg-rose-100 transition-all active:scale-90"
           >
             <Icon name="mood_bad" size={24} />
@@ -347,7 +416,7 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
           </button>
 
           <button
-            onClick={handleNext}
+            onClick={() => handleRating('good')}
             className="flex flex-col items-center justify-center gap-1 h-20 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/30 hover:brightness-110 transition-all active:scale-90 group"
           >
             <Icon name="sentiment_satisfied" size={24} className="group-hover:scale-110 transition-transform" />
@@ -355,7 +424,7 @@ export const FlashcardSession: React.FC<FlashcardSessionProps> = () => {
           </button>
 
           <button
-            onClick={handleNext}
+            onClick={() => handleRating('easy')}
             className="flex flex-col items-center justify-center gap-1 h-20 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest text-[10px] border-2 border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-100 transition-all active:scale-90"
           >
             <Icon name="sentiment_very_satisfied" size={24} />

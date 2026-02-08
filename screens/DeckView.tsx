@@ -48,6 +48,24 @@ export const DeckView: React.FC = () => {
     overscan: 5,
   });
 
+  // Restore scroll position on mount
+  React.useEffect(() => {
+    if (filteredWords.length > 0 && id) {
+      const savedIndex = sessionStorage.getItem(`lingoflow_deck_scroll_${id}`);
+      if (savedIndex !== null) {
+        const index = parseInt(savedIndex, 10);
+        if (!isNaN(index) && index >= 0 && index < filteredWords.length) {
+          // Small timeout to ensure virtualizer is ready
+          setTimeout(() => {
+            rowVirtualizer.scrollToIndex(index, { align: 'start' });
+            // Clear storage so we don't keep restoring on subsequent renders/updates
+            sessionStorage.removeItem(`lingoflow_deck_scroll_${id}`);
+          }, 0);
+        }
+      }
+    }
+  }, [id, filteredWords.length]); // Removed rowVirtualizer from deps to avoid loop, though it should be stable enough
+
   const handleDeleteDeck = () => {
     if (confirm('Are you sure you want to delete this deck and all its words?')) {
       if (id) {
@@ -237,8 +255,48 @@ export const DeckView: React.FC = () => {
     }
   };
 
+  const handleStartSession = () => {
+    const scrollTop = parentRef.current?.scrollTop || 0;
+    const virtualItems = rowVirtualizer.getVirtualItems();
+
+    // Default to first item
+    let firstIndex = 0;
+
+    // Find the item that starts visible in the viewport
+    // The item whose 'end' (start + size) is greater than scrollTop
+    const visibleItem = virtualItems.find((item) => {
+      // Logic: A word is "visible" if its center point is within the viewport
+      // OR if a significant portion (e.g., > 50%) is visible.
+      // Current simple check: item.end > scrollTop
+      // Improved check: item.end > scrollTop + (item.size * 0.6)
+      // This means at least 60% of the item must be visible at the bottom to count as "the one"
+      // If it's mostly scrolled out (only 40% visible at bottom), we skip it and take the next one.
+      return item.start + item.size > scrollTop + item.size * 0.6;
+    });
+
+    if (visibleItem) {
+      firstIndex = visibleItem.index;
+    } else {
+      // Fallback math if virtualizer is empty or acting up
+      // 88px is the estimated height of a row
+      firstIndex = Math.floor(scrollTop / 88);
+    }
+
+    // Safety clamp
+    firstIndex = Math.max(0, Math.min(firstIndex, filteredWords.length - 1));
+
+    // Save scroll position
+    if (id) {
+      sessionStorage.setItem(`lingoflow_deck_scroll_${id}`, firstIndex.toString());
+    }
+
+    const startWord = filteredWords[firstIndex];
+    // Use query parameter instead of state for robust URL-based navigation
+    navigate(`/flashcards/${id}?startWordId=${startWord?.id || ''}`);
+  };
+
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden font-display">
+    <div className="relative flex h-full w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden font-display">
       {/* App Bar */}
       <header className="sticky top-0 z-20 bg-surface-light dark:bg-surface-dark border-b border-slate-100 dark:border-slate-800 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 h-16">
@@ -340,7 +398,14 @@ export const DeckView: React.FC = () => {
       {/* Primary Action Buttons */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm flex items-center gap-3 z-30">
         <button
-          onClick={() => navigate(`/flashcards/${id}`)}
+          onClick={() => navigate(`/ai-quiz/${id}`)}
+          disabled={deckWords.length < 3}
+          className="size-16 bg-white dark:bg-slate-800 text-amber-500 rounded-3xl font-black shadow-xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all border border-slate-100 dark:border-slate-700 disabled:opacity-50 disabled:grayscale"
+        >
+          <Icon name="psychology" size={32} />
+        </button>
+        <button
+          onClick={handleStartSession}
           disabled={deckWords.length === 0}
           className="flex-1 h-16 bg-primary text-white rounded-3xl font-black uppercase tracking-widest text-xs shadow-2xl shadow-primary/40 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:grayscale disabled:opacity-50"
         >
